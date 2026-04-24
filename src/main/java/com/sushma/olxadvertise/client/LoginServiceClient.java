@@ -13,7 +13,11 @@ import com.sushma.olxadvertise.client.fallback.LoginServiceFallback;
  * Base URL is resolved from application.properties via 'url' attribute.
  * Fallback handles the case when olx-login is unreachable.
  */
-@FeignClient(name = "olx-login", url = "${olx.login.service.url}", fallback = LoginServiceFallback.class)
+//@FeignClient(name = "olx-login", url = "${olx.login.service.url}", fallback = LoginServiceFallback.class)
+@FeignClient(
+	    name = "login-service",
+	    url  = "${olx.login.service.url}"   // externalized — never hardcode
+	)
 public interface LoginServiceClient {
 
     /**
@@ -27,6 +31,6 @@ public interface LoginServiceClient {
      * Fetches the logged-in user's details using the Authorization token.
      * Maps to: GET /user in olx-login
      */
-    @GetMapping("/user")
+    @GetMapping("/user/info")
     Map<String, Object> getUserDetails(@RequestHeader("Authorization") String authToken);
 }

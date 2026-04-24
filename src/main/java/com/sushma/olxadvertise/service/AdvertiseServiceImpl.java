@@ -20,7 +20,10 @@ import com.sushma.olxadvertise.exception.InvalidSearchCriteriaException;
 import com.sushma.olxadvertise.exception.InvalidTokenException;
 import com.sushma.olxadvertise.repository.AdvertiseRepository;
 
+import lombok.extern.log4j.Log4j2;
+
 @Service
+@Log4j2
 public class AdvertiseServiceImpl implements AdvertiseService {
 
     @Autowired
@@ -39,6 +42,8 @@ public class AdvertiseServiceImpl implements AdvertiseService {
     public AdvertiseResponseDto postAdvertise(String authToken, AdvertiseRequestDto request) {
         checkToken(authToken);
         Map<String, Object> userDetails = loginServiceClient.getUserDetails(authToken);
+        
+        log.info("userDetails:"+userDetails.toString());
 
         String username = (String) userDetails.get("userName");
         String postedBy = userDetails.get("firstName") + " " + userDetails.get("lastName");
@@ -54,7 +59,7 @@ public class AdvertiseServiceImpl implements AdvertiseService {
         advertise.setPostedBy(postedBy);
         advertise.setCreatedDate(LocalDate.now());
         advertise.setModifiedDate(LocalDate.now());
-        advertise.setActive("1");
+        advertise.setActive("true");
 
         AdvertiseEntity saved = advertiseRepository.save(advertise);
         return toDto(saved);
@@ -70,7 +75,7 @@ public class AdvertiseServiceImpl implements AdvertiseService {
         String username = (String) userDetails.get("userName");
 
         AdvertiseEntity existing = advertiseRepository
-                .findByIdAndUsernameAndActive(advertiseId, username, "1")
+                .findByIdAndUsernameAndActive(advertiseId, username, "true")
                 .orElseThrow(() -> new AdvertiseNotFoundException(advertiseId));
 
         existing.setTitle(request.getTitle());
@@ -96,7 +101,7 @@ public class AdvertiseServiceImpl implements AdvertiseService {
         Map<String, Object> userDetails = loginServiceClient.getUserDetails(authToken);
         String username = (String) userDetails.get("userName");
 
-        return advertiseRepository.findByUsernameAndActive(username, "1")
+        return advertiseRepository.findByUsernameAndActive(username, "true")
                 .stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -112,7 +117,7 @@ public class AdvertiseServiceImpl implements AdvertiseService {
         String username = (String) userDetails.get("userName");
 
         AdvertiseEntity advertise = advertiseRepository
-                .findByIdAndUsernameAndActive(advertiseId, username, "1")
+                .findByIdAndUsernameAndActive(advertiseId, username, "true")
                 .orElseThrow(() -> new AdvertiseNotFoundException(advertiseId));
 
         return toDto(advertise);
@@ -128,7 +133,7 @@ public class AdvertiseServiceImpl implements AdvertiseService {
         String username = (String) userDetails.get("userName");
 
         AdvertiseEntity advertise = advertiseRepository
-                .findByIdAndUsernameAndActive(advertiseId, username, "1")
+                .findByIdAndUsernameAndActive(advertiseId, username, "true")
                 .orElseThrow(() -> new AdvertiseNotFoundException(advertiseId));
 
         // Soft-delete: mark active = "0"
@@ -152,7 +157,7 @@ public class AdvertiseServiceImpl implements AdvertiseService {
         List<AdvertiseEntity> results;
 
         if (isBlank(dateCondition)) {
-            results = advertiseRepository.filterByCriteria(searchText, categoryId, postedBy);
+            results = advertiseRepository.filterByCriteria("true",searchText, categoryId, postedBy);
         } else {
             switch (dateCondition.toLowerCase()) {
                 case "equals":
@@ -160,7 +165,7 @@ public class AdvertiseServiceImpl implements AdvertiseService {
                         throw new InvalidSearchCriteriaException(
                                 "onDate is required when dateCondition is 'equals'.");
                     }
-                    results = advertiseRepository.filterByCriteriaOnDate(
+                    results = advertiseRepository.filterByCriteriaOnDate("true",
                             searchText, categoryId, postedBy,
                             LocalDate.parse(criteria.getOnDate()));
                     break;
@@ -170,7 +175,7 @@ public class AdvertiseServiceImpl implements AdvertiseService {
                         throw new InvalidSearchCriteriaException(
                                 "fromDate is required when dateCondition is 'greaterthan'.");
                     }
-                    results = advertiseRepository.filterByCriteriaGreaterThan(
+                    results = advertiseRepository.filterByCriteriaGreaterThan("true",
                             searchText, categoryId, postedBy,
                             LocalDate.parse(criteria.getFromDate()));
                     break;
@@ -180,7 +185,7 @@ public class AdvertiseServiceImpl implements AdvertiseService {
                         throw new InvalidSearchCriteriaException(
                                 "fromDate is required when dateCondition is 'lessthan'.");
                     }
-                    results = advertiseRepository.filterByCriteriaLessThan(
+                    results = advertiseRepository.filterByCriteriaLessThan("true",
                             searchText, categoryId, postedBy,
                             LocalDate.parse(criteria.getFromDate()));
                     break;
@@ -190,7 +195,7 @@ public class AdvertiseServiceImpl implements AdvertiseService {
                         throw new InvalidSearchCriteriaException(
                                 "fromDate and toDate are both required when dateCondition is 'between'.");
                     }
-                    results = advertiseRepository.filterByCriteriaBetween(
+                    results = advertiseRepository.filterByCriteriaBetween("true",
                             searchText, categoryId, postedBy,
                             LocalDate.parse(criteria.getFromDate()),
                             LocalDate.parse(criteria.getToDate()));
@@ -234,7 +239,7 @@ public class AdvertiseServiceImpl implements AdvertiseService {
         if (isBlank(searchText)) {
             throw new InvalidSearchCriteriaException("searchText query parameter is required.");
         }
-        return advertiseRepository.searchByText(searchText)
+        return advertiseRepository.searchByText("true",searchText)
                 .stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -248,7 +253,7 @@ public class AdvertiseServiceImpl implements AdvertiseService {
         checkToken(authToken);
 
         AdvertiseEntity advertise = advertiseRepository.findById(advertiseId)
-                .filter(a -> "1".equals(a.getActive()))
+                .filter(a -> "true".equals(a.getActive()))
                 .orElseThrow(() -> new AdvertiseNotFoundException(advertiseId));
 
         return toDto(advertise);

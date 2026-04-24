@@ -1,27 +1,28 @@
 package com.sushma.olxadvertise.client.fallback;
 
 import java.util.Collections;
-import java.util.Map;
 
 import org.springframework.stereotype.Component;
 
 import com.sushma.olxadvertise.client.MasterdataServiceClient;
+import com.sushma.olxadvertise.dto.masterdataclient.CategoryResponse;
+import com.sushma.olxadvertise.dto.masterdataclient.StatusListResponse;
 
 /**
  * Feign fallback for MasterdataServiceClient.
- * Returns safe empty responses when olx-masterdata is unreachable,
- * so that advertise operations can still proceed with degraded data.
+ * Returns safe EMPTY (not null) responses when olx-masterdata is unreachable,
+ * preventing NullPointerExceptions in the helper layer.
  */
 @Component
 public class MasterdataServiceFallback implements MasterdataServiceClient {
 
     @Override
-    public Map<String, Object> getAllCategories() {
-        return Collections.singletonMap("categories", Collections.emptyList());
+    public CategoryResponse getAllCategories() {
+        return new CategoryResponse(Collections.emptyList());
     }
 
     @Override
-    public Map<String, Object> getAllStatuses() {
-        return Collections.singletonMap("statusList", Collections.emptyList());
+    public StatusListResponse getAllStatuses() {
+        return new StatusListResponse(Collections.emptyList());
     }
 }

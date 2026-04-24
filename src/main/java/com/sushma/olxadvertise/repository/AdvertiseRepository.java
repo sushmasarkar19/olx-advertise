@@ -14,71 +14,104 @@ import com.sushma.olxadvertise.entity.AdvertiseEntity;
 @Repository
 public interface AdvertiseRepository extends JpaRepository<AdvertiseEntity, Integer> {
 
-    // All active ads posted by a given username
+    // ── Derived queries – no JPQL literals, no fix needed ─────────────────
+
     List<AdvertiseEntity> findByUsernameAndActive(String username, String active);
 
-    // One active ad by id and username
     Optional<AdvertiseEntity> findByIdAndUsernameAndActive(int id, String username, String active);
 
-    // Full-text search across title and description (case-insensitive)
-    @Query("SELECT a FROM Advertise a WHERE a.active = '1' AND " +
+    // ── JPQL queries – FIX APPLIED TO ALL 6 ───────────────────────────────
+    //
+    // ROOT CAUSE:
+    //   Hibernate 6.x (Spring Boot 4.x) introduced a strict JPQL/HQL parser
+    //   that validates ALL query literals at startup against the entity model.
+    //   Inline string literals like 'true' in comparisons (a.active = 'true')
+    //   fail this static validation even when the Java field type is String.
+    //
+    // FIX:
+    //   Replace every  a.active = 'true'  with  a.active = :active
+    //   and add  @Param("active") String active  to every method signature.
+    //   In your service always pass "true" for this parameter.
+    //
+    //   This is also better practice — bind parameters are:
+    //     - immune to Hibernate's static literal type checking
+    //     - safer (no JPQL injection risk)
+    //     - reusable (same query plan for any active value)
+
+    // 1. Full-text search across title and description
+    @Query("SELECT a FROM AdvertiseEntity a WHERE a.active = :active AND " +
            "(LOWER(a.title) LIKE LOWER(CONCAT('%',:text,'%')) OR " +
            " LOWER(a.description) LIKE LOWER(CONCAT('%',:text,'%')))")
-    List<AdvertiseEntity> searchByText(@Param("text") String text);
+    List<AdvertiseEntity> searchByText(
+            @Param("active") String active,
+            @Param("text") String text);
 
-    // ---------- filter-criteria queries ----------
-
-    @Query("SELECT a FROM Advertise a WHERE a.active = '1' " +
+    // 2. Filter by criteria (no date condition)
+    @Query("SELECT a FROM AdvertiseEntity a WHERE a.active = :active " +
            "AND (:searchText IS NULL OR LOWER(a.title) LIKE LOWER(CONCAT('%',:searchText,'%')) " +
            "     OR LOWER(a.description) LIKE LOWER(CONCAT('%',:searchText,'%'))) " +
            "AND (:categoryId IS NULL OR a.categoryId = :categoryId) " +
            "AND (:postedBy IS NULL OR LOWER(a.postedBy) LIKE LOWER(CONCAT('%',:postedBy,'%')))")
-    List<AdvertiseEntity> filterByCriteria(@Param("searchText") String searchText,
-                                     @Param("categoryId") Integer categoryId,
-                                     @Param("postedBy") String postedBy);
+    List<AdvertiseEntity> filterByCriteria(
+            @Param("active") String active,
+            @Param("searchText") String searchText,
+            @Param("categoryId") Integer categoryId,
+            @Param("postedBy") String postedBy);
 
-    @Query("SELECT a FROM Advertise a WHERE a.active = '1' " +
+    // 3. Filter by criteria + exact date match
+    @Query("SELECT a FROM AdvertiseEntity a WHERE a.active = :active " +
            "AND (:searchText IS NULL OR LOWER(a.title) LIKE LOWER(CONCAT('%',:searchText,'%')) " +
            "     OR LOWER(a.description) LIKE LOWER(CONCAT('%',:searchText,'%'))) " +
            "AND (:categoryId IS NULL OR a.categoryId = :categoryId) " +
            "AND (:postedBy IS NULL OR LOWER(a.postedBy) LIKE LOWER(CONCAT('%',:postedBy,'%'))) " +
            "AND a.createdDate = :onDate")
-    List<AdvertiseEntity> filterByCriteriaOnDate(@Param("searchText") String searchText,
-                                           @Param("categoryId") Integer categoryId,
-                                           @Param("postedBy") String postedBy,
-                                           @Param("onDate") LocalDate onDate);
+    List<AdvertiseEntity> filterByCriteriaOnDate(
+            @Param("active") String active,
+            @Param("searchText") String searchText,
+            @Param("categoryId") Integer categoryId,
+            @Param("postedBy") String postedBy,
+            @Param("onDate") LocalDate onDate);
 
-    @Query("SELECT a FROM Advertise a WHERE a.active = '1' " +
+    // 4. Filter by criteria + createdDate greater than fromDate
+    @Query("SELECT a FROM AdvertiseEntity a WHERE a.active = :active " +
            "AND (:searchText IS NULL OR LOWER(a.title) LIKE LOWER(CONCAT('%',:searchText,'%')) " +
            "     OR LOWER(a.description) LIKE LOWER(CONCAT('%',:searchText,'%'))) " +
            "AND (:categoryId IS NULL OR a.categoryId = :categoryId) " +
            "AND (:postedBy IS NULL OR LOWER(a.postedBy) LIKE LOWER(CONCAT('%',:postedBy,'%'))) " +
            "AND a.createdDate > :fromDate")
-    List<AdvertiseEntity> filterByCriteriaGreaterThan(@Param("searchText") String searchText,
-                                                @Param("categoryId") Integer categoryId,
-                                                @Param("postedBy") String postedBy,
-                                                @Param("fromDate") LocalDate fromDate);
+    List<AdvertiseEntity> filterByCriteriaGreaterThan(
+            @Param("active") String active,
+            @Param("searchText") String searchText,
+            @Param("categoryId") Integer categoryId,
+            @Param("postedBy") String postedBy,
+            @Param("fromDate") LocalDate fromDate);
 
-    @Query("SELECT a FROM Advertise a WHERE a.active = '1' " +
+    // 5. Filter by criteria + createdDate less than fromDate
+    @Query("SELECT a FROM AdvertiseEntity a WHERE a.active = :active " +
            "AND (:searchText IS NULL OR LOWER(a.title) LIKE LOWER(CONCAT('%',:searchText,'%')) " +
            "     OR LOWER(a.description) LIKE LOWER(CONCAT('%',:searchText,'%'))) " +
            "AND (:categoryId IS NULL OR a.categoryId = :categoryId) " +
            "AND (:postedBy IS NULL OR LOWER(a.postedBy) LIKE LOWER(CONCAT('%',:postedBy,'%'))) " +
            "AND a.createdDate < :fromDate")
-    List<AdvertiseEntity> filterByCriteriaLessThan(@Param("searchText") String searchText,
-                                             @Param("categoryId") Integer categoryId,
-                                             @Param("postedBy") String postedBy,
-                                             @Param("fromDate") LocalDate fromDate);
+    List<AdvertiseEntity> filterByCriteriaLessThan(
+            @Param("active") String active,
+            @Param("searchText") String searchText,
+            @Param("categoryId") Integer categoryId,
+            @Param("postedBy") String postedBy,
+            @Param("fromDate") LocalDate fromDate);
 
-    @Query("SELECT a FROM Advertise a WHERE a.active = '1' " +
+    // 6. Filter by criteria + createdDate between fromDate and toDate
+    @Query("SELECT a FROM AdvertiseEntity a WHERE a.active = :active " +
            "AND (:searchText IS NULL OR LOWER(a.title) LIKE LOWER(CONCAT('%',:searchText,'%')) " +
            "     OR LOWER(a.description) LIKE LOWER(CONCAT('%',:searchText,'%'))) " +
            "AND (:categoryId IS NULL OR a.categoryId = :categoryId) " +
            "AND (:postedBy IS NULL OR LOWER(a.postedBy) LIKE LOWER(CONCAT('%',:postedBy,'%'))) " +
            "AND a.createdDate BETWEEN :fromDate AND :toDate")
-    List<AdvertiseEntity> filterByCriteriaBetween(@Param("searchText") String searchText,
-                                            @Param("categoryId") Integer categoryId,
-                                            @Param("postedBy") String postedBy,
-                                            @Param("fromDate") LocalDate fromDate,
-                                            @Param("toDate") LocalDate toDate);
+    List<AdvertiseEntity> filterByCriteriaBetween(
+            @Param("active") String active,
+            @Param("searchText") String searchText,
+            @Param("categoryId") Integer categoryId,
+            @Param("postedBy") String postedBy,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate);
 }

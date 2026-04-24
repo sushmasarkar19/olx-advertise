@@ -1,95 +1,110 @@
 package com.sushma.olxadvertise.client.helper;
 
-import java.util.List;
-import java.util.Map;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.sushma.olxadvertise.client.MasterdataServiceClient;
+import com.sushma.olxadvertise.dto.masterdataclient.CategoryResponse;
+import com.sushma.olxadvertise.dto.masterdataclient.StatusListResponse;
 
-/**
- * Helper that wraps MasterdataServiceClient (Feign interface) and exposes
- * convenient lookup methods used by AdvertiseServiceImpl.
- *
- * Keeping this logic here means the Feign interface stays clean (one method
- * per remote endpoint) while the service layer never has to parse raw Maps.
- */
+import lombok.extern.log4j.Log4j2;
+
 @Component
+@Log4j2
 public class MasterdataClientHelper {
 
     @Autowired
     private MasterdataServiceClient masterdataServiceClient;
 
     /** Returns the category name for a given categoryId, or "Unknown". */
-    @SuppressWarnings("unchecked")
     public String getCategoryName(int categoryId) {
         try {
-            Map<String, Object> response = masterdataServiceClient.getAllCategories();
-            List<Map<String, Object>> categories =
-                    (List<Map<String, Object>>) response.get("categories");
-            if (categories == null) return "Unknown";
-            return categories.stream()
-                    .filter(c -> ((Number) c.get("id")).intValue() == categoryId)
-                    .map(c -> (String) c.get("category"))
+            CategoryResponse response = masterdataServiceClient.getAllCategories();
+            log.info("getCategoryName - raw response: {}", response);
+            if (response == null || response.getCategories() == null) {
+                log.warn("getCategoryName - response or categories list is null for categoryId={}", categoryId);
+                return "Unknown";
+            }
+            return response.getCategories().stream()
+                    .filter(c -> c.getId() == categoryId)
+                    .map(c -> c.getCategory())
                     .findFirst()
-                    .orElse("Unknown");
+                    .orElseGet(() -> {
+                        log.warn("getCategoryName - no match for categoryId={}, available: {}", categoryId, response.getCategories());
+                        return "Unknown";
+                    });
         } catch (Exception e) {
+            log.error("getCategoryName failed for categoryId={}: {}", categoryId, e.getMessage(), e);
             return "Unknown";
         }
     }
 
     /** Returns the category id for a given name (case-insensitive), or null. */
-    @SuppressWarnings("unchecked")
     public Integer getCategoryId(String categoryName) {
-        if (categoryName == null || categoryName.isBlank()) return null;
+        if (categoryName == null || categoryName.trim().isEmpty()) return null;
         try {
-            Map<String, Object> response = masterdataServiceClient.getAllCategories();
-            List<Map<String, Object>> categories =
-                    (List<Map<String, Object>>) response.get("categories");
-            if (categories == null) return null;
-            return categories.stream()
-                    .filter(c -> categoryName.equalsIgnoreCase((String) c.get("category")))
-                    .map(c -> ((Number) c.get("id")).intValue())
+            CategoryResponse response = masterdataServiceClient.getAllCategories();
+            log.info("getCategoryId - raw response: {}", response);
+            if (response == null || response.getCategories() == null) {
+                log.warn("getCategoryId - response or categories list is null for categoryName={}", categoryName);
+                return null;
+            }
+            return response.getCategories().stream()
+                    .filter(c -> categoryName.equalsIgnoreCase(c.getCategory()))
+                    .map(c -> c.getId())
                     .findFirst()
-                    .orElse(null);
+                    .orElseGet(() -> {
+                        log.warn("getCategoryId - no match for categoryName={}", categoryName);
+                        return null;
+                    });
         } catch (Exception e) {
+            log.error("getCategoryId failed for categoryName='{}': {}", categoryName, e.getMessage(), e);
             return null;
         }
     }
 
     /** Returns the status name for a given statusId, or "Unknown". */
-    @SuppressWarnings("unchecked")
     public String getStatusName(int statusId) {
         try {
-            Map<String, Object> response = masterdataServiceClient.getAllStatuses();
-            List<Map<String, Object>> statusList =
-                    (List<Map<String, Object>>) response.get("statusList");
-            if (statusList == null) return "Unknown";
-            return statusList.stream()
-                    .filter(s -> ((Number) s.get("id")).intValue() == statusId)
-                    .map(s -> (String) s.get("status"))
+            StatusListResponse response = masterdataServiceClient.getAllStatuses();
+            log.info("getStatusName - raw response: {}", response);
+            if (response == null || response.getStatusList() == null) {
+                log.warn("getStatusName - response or statusList is null for statusId={}", statusId);
+                return "Unknown";
+            }
+            return response.getStatusList().stream()
+                    .filter(s -> s.getId() == statusId)
+                    .map(s -> s.getStatus())
                     .findFirst()
-                    .orElse("Unknown");
+                    .orElseGet(() -> {
+                        log.warn("getStatusName - no match for statusId={}, available: {}", statusId, response.getStatusList());
+                        return "Unknown";
+                    });
         } catch (Exception e) {
+            log.error("getStatusName failed for statusId={}: {}", statusId, e.getMessage(), e);
             return "Unknown";
         }
     }
 
     /** Returns the id of the OPEN status (defaults to 1 if unavailable). */
-    @SuppressWarnings("unchecked")
     public int getOpenStatusId() {
         try {
-            Map<String, Object> response = masterdataServiceClient.getAllStatuses();
-            List<Map<String, Object>> statusList =
-                    (List<Map<String, Object>>) response.get("statusList");
-            if (statusList == null) return 1;
-            return statusList.stream()
-                    .filter(s -> "OPEN".equalsIgnoreCase((String) s.get("status")))
-                    .map(s -> ((Number) s.get("id")).intValue())
+            StatusListResponse response = masterdataServiceClient.getAllStatuses();
+            log.info("getOpenStatusId - raw response: {}", response);
+            if (response == null || response.getStatusList() == null) {
+                log.warn("getOpenStatusId - response or statusList is null, defaulting to 1");
+                return 1;
+            }
+            return response.getStatusList().stream()
+                    .filter(s -> "OPEN".equalsIgnoreCase(s.getStatus()))
+                    .map(s -> s.getId())
                     .findFirst()
-                    .orElse(1);
+                    .orElseGet(() -> {
+                        log.warn("getOpenStatusId - OPEN status not found, defaulting to 1");
+                        return 1;
+                    });
         } catch (Exception e) {
+            log.error("getOpenStatusId failed: {}", e.getMessage(), e);
             return 1;
         }
     }

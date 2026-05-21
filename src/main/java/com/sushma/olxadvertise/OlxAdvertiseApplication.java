@@ -34,7 +34,7 @@ public class OlxAdvertiseApplication {
 	        final String securitySchemeName = "bearerAuth";
 
 	        return new OpenAPI()	        		
-	        		.servers(List.of(new Server().url("/gateway/advertise")))
+	        		.servers(List.of(new Server().url("/gateway")))
 	                .addSecurityItem(new SecurityRequirement().addList(securitySchemeName))
 	                .components(new Components()
 	                        .addSecuritySchemes(securitySchemeName,

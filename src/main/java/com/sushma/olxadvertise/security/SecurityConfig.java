@@ -40,14 +40,10 @@ public class SecurityConfig {
     @Autowired
     private GatewayAuthFilter gatewayAuthFilter;
 
-    private static final String[] SWAGGER_PATHS = {
-        "/swagger-ui.html",
-        "/swagger-ui/**",
-        "/v3/api-docs",
-        "/v3/api-docs/**",
-        "/swagger-resources",
-        "/swagger-resources/**",
-        "/webjars/**"
+    private static final String[] PUBLIC_PATHS = {
+        "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs",
+        "/v3/api-docs/**", "/swagger-resources", "/swagger-resources/**",
+        "/webjars/**", "/actuator/**"
     };
 
     @Bean
@@ -61,7 +57,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 
                 // ── Swagger UI (always public) ────────────────────────────
-                .requestMatchers(SWAGGER_PATHS).permitAll()
+                .requestMatchers(PUBLIC_PATHS).permitAll()
                 
                 // ── Public search endpoints (no JWT needed) ───────────────
                 .requestMatchers(HttpMethod.GET, "/advertise/search").permitAll()
